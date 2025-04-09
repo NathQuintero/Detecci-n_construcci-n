@@ -95,11 +95,11 @@ if image:
     output_data = interpreter.get_tensor(output_details[0]['index'])
 
     # Interpretación multiclase con umbral de confianza
-    predicted_labels = [
-        model_classes[i]
-        for i, prob in enumerate(output_data[0][:len(model_classes)])
-        if float(np.squeeze(prob)) > confianza
-    ]
+    predicted_labels = []
+    for i, prob in enumerate(output_data[0][:len(model_classes)]):
+        value = np.array(prob).astype(np.float32).item()
+        if value > confianza:
+            predicted_labels.append(model_classes[i])
 
     detected_set = set(predicted_labels)
     faltantes = required_classes - detected_set
