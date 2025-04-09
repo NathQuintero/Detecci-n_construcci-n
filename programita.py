@@ -83,7 +83,7 @@ elif option == "📸 Cámara":
 if image:
     st.image(image, caption="📷 Imagen cargada", use_column_width=True)
 
-    # Preprocesamiento igual al ejemplo del profesor
+    # Preprocesamiento
     resized_img = image.resize((input_shape[1], input_shape[0]))
     img_array = tf.keras.utils.img_to_array(resized_img)
     img_array = tf.expand_dims(img_array, 0)  # Crear batch de 1
@@ -93,21 +93,22 @@ if image:
     interpreter.invoke()
     output_data = interpreter.get_tensor(output_details[0]['index'])
 
-    # Mostrar forma del output para debug
-    st.write("🔎 Salida cruda del modelo:", output_data)
-    st.write("🔎 Forma del output:", output_data.shape)
+    # Procesar la salida del modelo de detección YOLOv8
+    detections = output_data[0].transpose()  # shape: (8400, 9)
+    detected_labels = set()
 
-    # Interpretación multiclase
-    predicted_labels = []
-    for i, prob in enumerate(output_data[0][:len(model_classes)]):
-        flat = np.ravel(prob)
-        if len(flat) == 1:
-            confidence_score = float(flat[0])
-            if confidence_score > confianza:
-                predicted_labels.append(model_classes[i])
+    for det in detections:
+        x, y, w, h = det[:4]
+        obj_conf = det[4]
+        class_probs = det[5:]
 
-    detected_set = set(predicted_labels)
-    faltantes = required_classes - detected_set
+        if obj_conf > confianza:
+            class_id = int(np.argmax(class_probs))
+            class_conf = class_probs[class_id]
+            if class_conf > confianza and class_id < len(model_classes):
+                detected_labels.add(model_classes[class_id])
+
+    faltantes = required_classes - detected_labels
 
     st.subheader("📊 Resultado de la Predicción")
     if not faltantes:
@@ -121,7 +122,7 @@ if image:
     st.markdown("""
     ---
     **Detectado:**
-    - """ + "\n    - ".join(predicted_labels if predicted_labels else ["Nada detectado"]))
+    - """ + "\n    - ".join(sorted(detected_labels) if detected_labels else ["Nada detectado"]))
 
     # Audio
     mp3 = generar_audio(audio_text)
