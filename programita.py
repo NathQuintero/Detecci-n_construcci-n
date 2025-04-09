@@ -100,9 +100,11 @@ if image:
     # Interpretación multiclase
     predicted_labels = []
     for i, prob in enumerate(output_data[0][:len(model_classes)]):
-        confidence_score = float(np.squeeze(prob))
-        if confidence_score > confianza:
-            predicted_labels.append(model_classes[i])
+        flat = np.ravel(prob)
+        if len(flat) == 1:
+            confidence_score = float(flat[0])
+            if confidence_score > confianza:
+                predicted_labels.append(model_classes[i])
 
     detected_set = set(predicted_labels)
     faltantes = required_classes - detected_set
