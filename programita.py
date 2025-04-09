@@ -2,9 +2,7 @@ import streamlit as st
 from PIL import Image
 import tensorflow as tf
 import numpy as np
-import tempfile
 import os
-import cv2
 import requests
 from io import BytesIO
 from gtts import gTTS
@@ -52,8 +50,8 @@ output_details = interpreter.get_output_details()
 input_shape = input_details[0]['shape'][1:3]  # (alto, ancho)
 
 # 🎯 Clases esperadas
+model_classes = ['boots', 'gloves', 'helmet', 'human', 'vest']
 required_classes = {'boots', 'helmet', 'vest', 'human'}
-model_classes = ['boots', 'gloves', 'helmet', 'human', 'vest']  # Ajusta según el modelo real
 
 # 💬 Nivel de confianza
 st.markdown("**Selecciona el nivel mínimo de confianza para aceptar una clase detectada:**")
@@ -85,23 +83,26 @@ elif option == "📸 Cámara":
 if image:
     st.image(image, caption="📷 Imagen cargada", use_column_width=True)
 
-    # Preprocesamiento
+    # Preprocesamiento igual al ejemplo del profesor
     resized_img = image.resize((input_shape[1], input_shape[0]))
-    input_data = np.expand_dims(resized_img, axis=0).astype(np.float32) / 255.0
+    img_array = tf.keras.utils.img_to_array(resized_img)
+    img_array = tf.expand_dims(img_array, 0)  # Crear batch de 1
 
-    # Inferencia
-    interpreter.set_tensor(input_details[0]['index'], input_data)
+    # Ejecutar inferencia
+    interpreter.set_tensor(input_details[0]['index'], img_array)
     interpreter.invoke()
     output_data = interpreter.get_tensor(output_details[0]['index'])
 
-    # Interpretación multiclase con umbral de confianza
+    # Mostrar forma del output para debug
+    st.write("🔎 Salida cruda del modelo:", output_data)
+    st.write("🔎 Forma del output:", output_data.shape)
+
+    # Interpretación multiclase
     predicted_labels = []
     for i, prob in enumerate(output_data[0][:len(model_classes)]):
-        flat_prob = np.ravel(prob)
-        if flat_prob.size == 1:
-            value = float(flat_prob[0])
-            if value > confianza:
-                predicted_labels.append(model_classes[i])
+        confidence_score = float(np.squeeze(prob))
+        if confidence_score > confianza:
+            predicted_labels.append(model_classes[i])
 
     detected_set = set(predicted_labels)
     faltantes = required_classes - detected_set
@@ -114,13 +115,13 @@ if image:
         st.error(f"⚠️ Lo siento compañero, no estás preparado para trabajar. Te falta: {', '.join(faltantes)}")
         audio_text = f"Lo siento compañero. No estás listo para trabajar. Te falta: {', '.join(faltantes)}."
 
-    # Mostrar clases detectadas
+    # Mostrar etiquetas detectadas
     st.markdown("""
     ---
     **Detectado:**
     - """ + "\n    - ".join(predicted_labels if predicted_labels else ["Nada detectado"]))
 
-    # Reproducir audio del resultado
+    # Audio
     mp3 = generar_audio(audio_text)
     reproducir_audio(mp3)
 
