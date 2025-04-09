@@ -97,9 +97,11 @@ if image:
     # Interpretación multiclase con umbral de confianza
     predicted_labels = []
     for i, prob in enumerate(output_data[0][:len(model_classes)]):
-        value = np.array(prob).astype(np.float32).item()
-        if value > confianza:
-            predicted_labels.append(model_classes[i])
+        flat_prob = np.ravel(prob)
+        if flat_prob.size == 1:
+            value = float(flat_prob[0])
+            if value > confianza:
+                predicted_labels.append(model_classes[i])
 
     detected_set = set(predicted_labels)
     faltantes = required_classes - detected_set
