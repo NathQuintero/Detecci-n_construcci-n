@@ -4,12 +4,14 @@ import tensorflow as tf
 import numpy as np
 import tempfile
 import os
+import cv2
+import requests
 
 # Configurar la app
 st.set_page_config(page_title="Detector de EPP", page_icon="🦺", layout="centered")
 st.title("🛠️ Verificador de Equipos de Protección Personal")
 st.markdown("""
-Sube una imagen o pega una URL, y analizaremos si estás listo para trabajar 🏗️.
+Sube una imagen, toma una foto o pega una URL, y analizaremos si estás listo para trabajar 🏗️.
 Para estar preparado, necesitas llevar:
 - 🥾 Botas
 - 👷 Casco
@@ -33,7 +35,7 @@ required_classes = {'boots', 'helmet', 'vest', 'human'}
 model_classes = ['boots', 'gloves', 'helmet', 'human', 'vest']  # ajusta según tu modelo
 
 # Elegir fuente de imagen
-option = st.radio("Selecciona cómo subir la imagen:", ["📂 Archivo", "🌐 URL"])
+option = st.radio("Selecciona cómo subir la imagen:", ["📂 Archivo", "🌐 URL", "📸 Cámara"])
 image = None
 
 if option == "📂 Archivo":
@@ -48,6 +50,11 @@ elif option == "🌐 URL":
             image = Image.open(requests.get(url, stream=True).raw).convert("RGB")
         except:
             st.error("No se pudo cargar la imagen desde la URL")
+
+elif option == "📸 Cámara":
+    camera_input = st.camera_input("Toma una foto")
+    if camera_input:
+        image = Image.open(camera_input).convert("RGB")
 
 if image:
     st.image(image, caption="Imagen cargada", use_column_width=True)
@@ -81,4 +88,4 @@ if image:
     - """ + "\n    - ".join(predicted_labels if predicted_labels else ["Nada detectado"]))
 
 else:
-    st.info("Por favor, sube una imagen o proporciona una URL para comenzar ✨")
+    st.info("Por favor, sube una imagen, toma una foto o proporciona una URL para comenzar ✨")
