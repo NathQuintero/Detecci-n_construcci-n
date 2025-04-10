@@ -26,8 +26,8 @@ def reproducir_audio(mp3_fp):
     st.markdown(audio_html, unsafe_allow_html=True)
 
 # 🧠 Cargar modelos
-modelo_personas = YOLO("yolov8n.pt")     # Detección de personas
-modelo_ppe = YOLO("modelolindo2.pt")             # Detección de PPE
+modelo_personas = YOLO("yolov8n.pt")     
+modelo_ppe = YOLO("best.pt")             
 
 # 🌟 Configuración de la página
 st.set_page_config(page_title="Evaluador PPE Inteligente", layout="wide")
