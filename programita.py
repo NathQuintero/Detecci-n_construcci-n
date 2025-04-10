@@ -103,10 +103,8 @@ elif opcion == "Desde una URL":
 # 🔍 Procesamiento de la imagen cargada
 if procesar and imagen_original:
     st.markdown("---")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("<h4 style='text-align:center'>📥 Imagen Original</h4>", unsafe_allow_html=True)
-        st.image(imagen_original, use_column_width=True)
+    st.markdown("<center><h3>🔍 Imagen cargada</h3></center>", unsafe_allow_html=True)
+    st.image(imagen_original, width=300)  # Imagen original más pequeña
 
     # ✅ PREPROCESAMIENTO
     img_cv = np.array(imagen_original)
@@ -115,8 +113,7 @@ if procesar and imagen_original:
     resultados_personas = modelo_personas(img_cv)[0]
     personas_detectadas = [r for r in resultados_personas.boxes.data.cpu().numpy() if int(r[5]) == 0]
 
-    with col2:
-        st.markdown(f"<h4 style='text-align:center'>👥 Personas detectadas: {len(personas_detectadas)}</h4>", unsafe_allow_html=True)
+    st.markdown(f"<center><h4>👥 Personas detectadas: {len(personas_detectadas)}</h4></center>", unsafe_allow_html=True)
 
     for i, persona in enumerate(personas_detectadas, start=1):
         x1, y1, x2, y2, conf, clase = map(int, persona[:6])
