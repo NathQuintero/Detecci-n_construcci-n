@@ -1,17 +1,19 @@
-import streamlit as st
-from PIL import Image
-import cv2
-import numpy as np
-import os
-from ultralytics import YOLO
-import tempfile
-import requests
-from io import BytesIO
-from gtts import gTTS
-import base64
+# 📦 Importación de librerías necesarias
+import streamlit as st  # Para construir la interfaz web interactiva
+from PIL import Image  # Para trabajar con imágenes
+import cv2  # OpenCV para procesamiento de imágenes
+import numpy as np  # Para operaciones con matrices
+import os  # Para manejar rutas del sistema
+from ultralytics import YOLO  # Para cargar modelos YOLOv8
+import tempfile  # Para guardar archivos temporales
+import requests  # Para cargar imágenes desde URL
+from io import BytesIO  # Para convertir contenido binario en imagen
+from gtts import gTTS  # Google Text-to-Speech para convertir texto en audio
+import base64  # Para codificar audio en base64
 
 # 🎧 Funciones de voz
 
+# Esta función convierte texto a voz y lo devuelve como archivo MP3 en memoria
 def generar_audio(texto):
     tts = gTTS(text=texto, lang='es')
     mp3_fp = BytesIO()
@@ -19,27 +21,28 @@ def generar_audio(texto):
     mp3_fp.seek(0)
     return mp3_fp
 
+# Esta función reproduce el audio generado en la interfaz de Streamlit
 def reproducir_audio(mp3_fp):
     audio_bytes = mp3_fp.read()
     audio_base64 = base64.b64encode(audio_bytes).decode()
     audio_html = f'<audio autoplay="true"><source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3"></audio>'
     st.markdown(audio_html, unsafe_allow_html=True)
 
-# 🧠 Cargar modelos
-modelo_personas = YOLO("yolov8n.pt")     # Detección de personas
-modelo_ppe = YOLO("modelolindo2.pt")             # Detección de PPE
+# 🧠 Cargar modelos de YOLO
+modelo_personas = YOLO("yolov8n.pt")  # Modelo preentrenado para detectar personas
+modelo_ppe = YOLO("modelolindo2.pt")  # Modelo entrenado por ti para detectar EPP (casco, botas, chaleco...)
 
-# 🌟 Configuración de la página
+# 🌟 Configuración inicial de la app
 st.set_page_config(page_title="Evaluador PPE Inteligente", layout="wide")
 
-# ✨ Firma superior
+# ✨ Firma superior con autoría
 st.markdown("""
 <center>
     <p style='font-size:18px;'><strong>Hecho con dedicación por Angelly y Nathalia</strong><br>Todos los derechos reservados ©️</p>
 </center>
 """, unsafe_allow_html=True)
 
-# 🖼️ Banner
+# 🖼️ Banner visual
 st.image("banner.png", use_container_width=True)
 st.markdown("""
 <center>
@@ -49,25 +52,26 @@ st.markdown("""
 ---
 """, unsafe_allow_html=True)
 
-# 🔍 Instrucciones con ejemplo visual
+# 📘 Instrucciones para el usuario (dentro de un contenedor desplegable)
 with st.expander("📖 ¿Cómo se usa esta herramienta?"):
     st.markdown("""
     - 📁 Puedes **subir una imagen desde tu dispositivo**
     - 🌐 O puedes **pegar la URL de una imagen** desde internet
     - 📷 También puedes **tomarte una foto con la cámara**
-    
+
     Luego, haz clic en **'Analizar Imagen'** para verificar si cumples con los requerimientos de seguridad 🏗️🛡️
     """)
     st.image("ejemplo.png", caption="Ejemplo de foto válida", use_container_width=True)
     st.info("Recuerda mostrar todo tu cuerpo y tus elementos de protección en la imagen")
 
-# 🔄 Entrada de imagen con selector
+# 🔄 Sección para subir la imagen
 st.subheader("📸 Selecciona cómo quieres subir la imagen")
 opcion = st.selectbox("¿Cómo deseas ingresar la imagen?", ("Subir desde archivo", "Desde la cámara", "Desde una URL"))
 
-imagen_original = None
-procesar = False
+imagen_original = None  # Aquí se guardará la imagen cargada
+procesar = False  # Bandera para saber si se debe procesar
 
+# 📁 Carga desde archivo
 if opcion == "Subir desde archivo":
     foto = st.file_uploader("Sube una imagen", type=["jpg", "jpeg", "png"])
     if st.button("📤 Analizar Imagen"):
@@ -77,6 +81,7 @@ if opcion == "Subir desde archivo":
         else:
             st.warning("⚠️ Por favor, sube una imagen.")
 
+# 📷 Captura con cámara
 elif opcion == "Desde la cámara":
     captura = st.camera_input("Toma una foto")
     if st.button("📤 Analizar Imagen"):
@@ -86,6 +91,7 @@ elif opcion == "Desde la cámara":
         else:
             st.warning("⚠️ Toma una foto para continuar.")
 
+# 🌐 Carga desde URL
 elif opcion == "Desde una URL":
     url = st.text_input("🔗 Pega la URL de la imagen aquí")
     if st.button("📤 Analizar Imagen"):
@@ -99,31 +105,39 @@ elif opcion == "Desde una URL":
         else:
             st.warning("⚠️ Ingresa una URL válida.")
 
-# 🔎 Análisis de la imagen
+# 🔍 Procesamiento de la imagen cargada
 if procesar and imagen_original:
     st.markdown("---")
     st.markdown("<center><h3>🔍 Imagen cargada</h3></center>", unsafe_allow_html=True)
     st.image(imagen_original, use_container_width=True)
 
-    # Convertir imagen a OpenCV
+    # ✅ PREPROCESAMIENTO
+    # Convertimos la imagen PIL a un array de NumPy
     img_cv = np.array(imagen_original)
+    # Convertimos el color de RGB (PIL) a BGR (OpenCV)
     img_cv = cv2.cvtColor(img_cv, cv2.COLOR_RGB2BGR)
 
-    # Detección de personas
-    resultados_personas = modelo_personas(img_cv)[0]
+    # 🧍 Detección de personas con YOLOv8
+    resultados_personas = modelo_personas(img_cv)[0]  # Ejecuta predicción sobre la imagen
+    # Filtramos las cajas que son de clase 0 (persona)
     personas_detectadas = [r for r in resultados_personas.boxes.data.cpu().numpy() if int(r[5]) == 0]
 
     st.markdown(f"<center><h4>👥 Personas detectadas: {len(personas_detectadas)}</h4></center>", unsafe_allow_html=True)
 
+    # 🧠 Evaluar cada persona detectada
     for i, persona in enumerate(personas_detectadas, start=1):
-        x1, y1, x2, y2, conf, clase = map(int, persona[:6])
-        persona_img = img_cv[y1:y2, x1:x2]
+        x1, y1, x2, y2, conf, clase = map(int, persona[:6])  # Coordenadas de la caja
+        persona_img = img_cv[y1:y2, x1:x2]  # Recorte de la persona detectada
 
+        # Guardar imagen recortada temporalmente para analizar su EPP
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
             cv2.imwrite(temp_file.name, persona_img)
-            resultados_ppe = modelo_ppe(temp_file.name)[0]
+            resultados_ppe = modelo_ppe(temp_file.name)[0]  # Ejecutar modelo PPE sobre persona
+
+            # Extraer etiquetas de lo que fue detectado
             etiquetas_detectadas = [modelo_ppe.names[int(d.cls)] for d in resultados_ppe.boxes]
 
+            # Dibujar cajas y etiquetas en la imagen de la persona
             for box in resultados_ppe.boxes:
                 x1o, y1o, x2o, y2o = map(int, box.xyxy[0])
                 label = modelo_ppe.names[int(box.cls[0])]
@@ -132,31 +146,34 @@ if procesar and imagen_original:
                 cv2.putText(persona_img, f"{label} {conf:.2f}", (x1o, y1o - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
+            # Mostrar imagen con detección centrada y con estilo
             st.markdown(f"<center><h4>👤 Persona {i}</h4></center>", unsafe_allow_html=True)
             persona_img_encoded = base64.b64encode(cv2.imencode('.png', persona_img)[1]).decode()
             st.markdown(
                 f'<center><img src="data:image/png;base64,{persona_img_encoded}" style="width: 300px; border-radius: 12px; box-shadow: 0px 4px 12px rgba(0,0,0,0.2);"/></center>',
                 unsafe_allow_html=True
             )
+
+            # Mostrar etiquetas
             st.markdown("**🎒 Elementos detectados:** " + ", ".join(etiquetas_detectadas))
 
-            requeridos = {"casco", "chaleco", "botas"}
+            # Validar si cumple con los EPP requeridos
+            requeridos = {"casco", "chaleco", "botas"}  # Elementos mínimos de seguridad
             presentes = set(etiquetas_detectadas)
 
             if requeridos.issubset(presentes):
                 mensaje = "✅ ¡Estás listo para trabajar compañero!"
                 st.success(mensaje)
                 st.image("ok.png", use_container_width=True)
-                st.balloons()  # 🎈 Confeti si cumple
+                st.balloons()  # 🎉 Confeti si cumple
             else:
                 faltantes = requeridos - presentes
                 mensaje = f"❌ Lo siento compañero, no estás listo para trabajar. Te falta: {', '.join(faltantes)}."
                 st.error(mensaje)
                 st.image("No.png", use_container_width=True)
-                st.snow()
+                st.snow()  # ❄️ Efecto si no cumple
 
-
-            # 🎧 Audio del mensaje final
+            # Reproducir mensaje en voz
             audio_fp = generar_audio(mensaje)
             reproducir_audio(audio_fp)
 
