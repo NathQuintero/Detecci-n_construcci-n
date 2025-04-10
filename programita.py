@@ -151,6 +151,8 @@ if procesar and imagen_original:
                 faltantes = requeridos - presentes
                 mensaje = f"❌ Lo siento compañero, no estás listo para trabajar. Te falta: {', '.join(faltantes)}."
                 st.error(mensaje)
+                st.snow()
+
 
             # 🎧 Audio del mensaje final
             audio_fp = generar_audio(mensaje)
