@@ -5,68 +5,107 @@ import numpy as np
 import os
 from ultralytics import YOLO
 import tempfile
+import requests
+from io import BytesIO
+from gtts import gTTS
+import base64
 
-# Cargar modelos
+# 🎧 Funciones de voz
+
+def generar_audio(texto):
+    tts = gTTS(text=texto, lang='es')
+    mp3_fp = BytesIO()
+    tts.write_to_fp(mp3_fp)
+    mp3_fp.seek(0)
+    return mp3_fp
+
+def reproducir_audio(mp3_fp):
+    audio_bytes = mp3_fp.read()
+    audio_base64 = base64.b64encode(audio_bytes).decode()
+    audio_html = f'<audio autoplay="true"><source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3"></audio>'
+    st.markdown(audio_html, unsafe_allow_html=True)
+
+# 🧠 Cargar modelos
 modelo_personas = YOLO("yolov8n.pt")     # Detección de personas
 modelo_ppe = YOLO("best.pt")             # Detección de PPE
 
-# Configuración de la página
-st.set_page_config(page_title="Sistema Inteligente de uso de PPE", layout="wide")
+# 🌟 Configuración de la página
+st.set_page_config(page_title="Evaluador PPE Inteligente", layout="wide")
 
-# Encabezado con logo y título
-col1, col2 = st.columns([0.1, 0.9])
-with col1:
-    st.image("logo.jpg", width=80)
-with col2:
-    st.title("Sistema Inteligente de uso de PPE")
-
-# Introducción
+# ✨ Firma superior
 st.markdown("""
-Bienvenido al **Sistema Inteligente de uso de Equipos de Protección Personal (PPE)**.  
-Esta herramienta utiliza visión por computadora para verificar si las personas están utilizando el equipo de protección necesario (casco, chaleco y botas) antes de ingresar a una fábrica.
+<center>
+    <p style='font-size:18px;'><strong>Hecho con dedicación por Angelly y Nathalia</strong><br>Todos los derechos reservados ©️</p>
+</center>
+""", unsafe_allow_html=True)
 
----  
-""")
-
-# Instrucciones
-st.subheader("📌 Instrucciones de uso")
+# 🖼️ Banner
+st.image("banner.png", use_container_width=True)
 st.markdown("""
-1. Elige una opción: cargar una imagen o tomar una foto.  
-2. Presiona el botón **Enviar Foto**.  
-3. El sistema detectará personas y evaluará el uso correcto del equipo de protección personal (PPE).  
-""")
+<center>
+    <h2>🦺 Bienvenido compañero a tu trabajo</h2>
+    <p style='font-size: 16px;'>Es hora de evaluar tu equipo de protección personal...</p>
+</center>
+---
+""", unsafe_allow_html=True)
 
-# Tabs para seleccionar entre carga y cámara
-tab1, tab2 = st.tabs(["📁 Subir Imagen", "📷 Tomar Foto"])
+# 🔍 Instrucciones con ejemplo visual
+with st.expander("📖 ¿Cómo se usa esta herramienta?"):
+    st.markdown("""
+    - 📁 Puedes **subir una imagen desde tu dispositivo**
+    - 🌐 O puedes **pegar la URL de una imagen** desde internet
+    - 📷 También puedes **tomarte una foto con la cámara**
+    
+    Luego, haz clic en **'Analizar Imagen'** para verificar si cumples con los requerimientos de seguridad 🏗️🛡️
+    """)
+    st.image("ejemplo.png", caption="Ejemplo de foto válida", use_container_width=True)
+    st.info("Recuerda mostrar todo tu cuerpo y tus elementos de protección en la imagen")
 
-# Variables para imagen y bandera de envío
+# 🔄 Entrada de imagen con selector
+st.subheader("📸 Selecciona cómo quieres subir la imagen")
+opcion = st.selectbox("¿Cómo deseas ingresar la imagen?", ("Subir desde archivo", "Desde la cámara", "Desde una URL"))
+
 imagen_original = None
 procesar = False
 
-with tab1:
-    foto = st.file_uploader("Sube una imagen", type=["jpg", "png", "jpeg"])
-    if st.button("📤 Enviar Foto", key="upload"):
+if opcion == "Subir desde archivo":
+    foto = st.file_uploader("Sube una imagen", type=["jpg", "jpeg", "png"])
+    if st.button("📤 Analizar Imagen"):
         if foto:
             imagen_original = Image.open(foto)
             procesar = True
         else:
-            st.warning("Por favor, sube una imagen antes de enviar.")
+            st.warning("⚠️ Por favor, sube una imagen.")
 
-with tab2:
-    captura = st.camera_input("Captura una foto")
-    if st.button("📤 Enviar Foto", key="camera"):
+elif opcion == "Desde la cámara":
+    captura = st.camera_input("Toma una foto")
+    if st.button("📤 Analizar Imagen"):
         if captura:
             imagen_original = Image.open(captura)
             procesar = True
         else:
-            st.warning("Por favor, toma una foto antes de enviar.")
+            st.warning("⚠️ Toma una foto para continuar.")
 
-# Procesamiento si hay imagen
+elif opcion == "Desde una URL":
+    url = st.text_input("🔗 Pega la URL de la imagen aquí")
+    if st.button("📤 Analizar Imagen"):
+        if url:
+            try:
+                response = requests.get(url)
+                imagen_original = Image.open(BytesIO(response.content))
+                procesar = True
+            except:
+                st.error("🚫 No se pudo cargar la imagen desde la URL proporcionada.")
+        else:
+            st.warning("⚠️ Ingresa una URL válida.")
+
+# 🔎 Análisis de la imagen
 if procesar and imagen_original:
-    st.subheader("🔍 Imagen cargada")
+    st.markdown("---")
+    st.markdown("<center><h3>🔍 Imagen cargada</h3></center>", unsafe_allow_html=True)
     st.image(imagen_original, use_container_width=True)
 
-    # Convertir imagen a formato OpenCV
+    # Convertir imagen a OpenCV
     img_cv = np.array(imagen_original)
     img_cv = cv2.cvtColor(img_cv, cv2.COLOR_RGB2BGR)
 
@@ -74,22 +113,17 @@ if procesar and imagen_original:
     resultados_personas = modelo_personas(img_cv)[0]
     personas_detectadas = [r for r in resultados_personas.boxes.data.cpu().numpy() if int(r[5]) == 0]
 
-    st.subheader(f"👥 Personas detectadas: {len(personas_detectadas)}")
+    st.markdown(f"<center><h4>👥 Personas detectadas: {len(personas_detectadas)}</h4></center>", unsafe_allow_html=True)
 
-    # Evaluar cada persona
     for i, persona in enumerate(personas_detectadas, start=1):
         x1, y1, x2, y2, conf, clase = map(int, persona[:6])
         persona_img = img_cv[y1:y2, x1:x2]
 
-        # Guardar temporalmente
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
             cv2.imwrite(temp_file.name, persona_img)
-
-            # Aplicar modelo PPE
             resultados_ppe = modelo_ppe(temp_file.name)[0]
             etiquetas_detectadas = [modelo_ppe.names[int(d.cls)] for d in resultados_ppe.boxes]
 
-            # Dibujar bounding boxes
             for box in resultados_ppe.boxes:
                 x1o, y1o, x2o, y2o = map(int, box.xyxy[0])
                 label = modelo_ppe.names[int(box.cls[0])]
@@ -98,20 +132,32 @@ if procesar and imagen_original:
                 cv2.putText(persona_img, f"{label} {conf:.2f}", (x1o, y1o - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
-            # Mostrar imagen con objetos detectados
-            st.markdown(f"### 👤 Persona {i}")
-            st.image(persona_img, caption="Objetos detectados en la persona", channels="BGR", width=300)
-            st.markdown("**Objetos detectados:** " + ", ".join(etiquetas_detectadas))
+            st.markdown(f"<center><h4>👤 Persona {i}</h4></center>", unsafe_allow_html=True)
+            persona_img_encoded = base64.b64encode(cv2.imencode('.png', persona_img)[1]).decode()
+            st.markdown(
+                f'<center><img src="data:image/png;base64,{persona_img_encoded}" style="width: 300px; border-radius: 12px; box-shadow: 0px 4px 12px rgba(0,0,0,0.2);"/></center>',
+                unsafe_allow_html=True
+            )
+            st.markdown("**🎒 Elementos detectados:** " + ", ".join(etiquetas_detectadas))
 
-            # Verificación de cumplimiento
             requeridos = {"casco", "chaleco", "botas"}
             presentes = set(etiquetas_detectadas)
 
             if requeridos.issubset(presentes):
-                st.success("✅ Cumple con los requisitos para el ingreso a la fábrica 🏭")
+                mensaje = "✅ ¡Estás listo para trabajar compañero!"
+                st.success(mensaje)
+                st.balloons()  # 🎈 Confeti si cumple
             else:
                 faltantes = requeridos - presentes
-                st.error(f"🚨 ALERTA: No cumple con los requisitos del PPE. Faltan: {', '.join(faltantes)}")
+                mensaje = f"❌ Lo siento compañero, no estás listo para trabajar. Te falta: {', '.join(faltantes)}."
+                st.error(mensaje)
+                st.snow()
+
+
+            # 🎧 Audio del mensaje final
+            audio_fp = generar_audio(mensaje)
+            reproducir_audio(audio_fp)
 
     st.markdown("---")
-    st.markdown("**Autor: Alfredo Díaz**  \nUnab 2025! ©️")
+else:
+    st.info("🧠 Esperando imagen... ¡Selecciona una forma de carga y haz clic en 'Analizar Imagen'!")
