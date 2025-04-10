@@ -146,6 +146,7 @@ if procesar and imagen_original:
             if requeridos.issubset(presentes):
                 mensaje = "✅ ¡Estás listo para trabajar compañero!"
                 st.success(mensaje)
+                st.balloons()  # 🎈 Confeti si cumple
             else:
                 faltantes = requeridos - presentes
                 mensaje = f"❌ Lo siento compañero, no estás listo para trabajar. Te falta: {', '.join(faltantes)}."
