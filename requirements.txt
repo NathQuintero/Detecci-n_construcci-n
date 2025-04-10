@@ -1,7 +1,5 @@
-streamlit==1.28.2
-tensorflow==2.18.0
-Pillow
-requests
-numpy
+streamlit
+ultralytics
 opencv-python-headless
-gTTS
+Pillow
+numpy
