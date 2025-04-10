@@ -133,7 +133,11 @@ if procesar and imagen_original:
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
             st.markdown(f"<center><h4>👤 Persona {i}</h4></center>", unsafe_allow_html=True)
-            st.image(persona_img, caption="🔎 Objetos detectados", channels="BGR", use_container_width=True)
+            persona_img_encoded = base64.b64encode(cv2.imencode('.png', persona_img)[1]).decode()
+            st.markdown(
+                f'<center><img src="data:image/png;base64,{persona_img_encoded}" style="width: 300px; border-radius: 12px; box-shadow: 0px 4px 12px rgba(0,0,0,0.2);"/></center>',
+                unsafe_allow_html=True
+            )
             st.markdown("**🎒 Elementos detectados:** " + ", ".join(etiquetas_detectadas))
 
             requeridos = {"casco", "chaleco", "botas"}
