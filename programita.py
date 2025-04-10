@@ -43,7 +43,7 @@ st.markdown("""
 st.image("banner.png", use_container_width=True)
 st.markdown("""
 <center>
-    <h2>🦺 Bienvenido compañero a tu trabajo</h2>
+    <h2>🦺 Bienvenido compañero a tu trabajo 🦺</h2>
     <p style='font-size: 16px;'>Es hora de evaluar tu equipo de protección personal...</p>
 </center>
 ---
@@ -140,11 +140,11 @@ if procesar and imagen_original:
             presentes = set(etiquetas_detectadas)
 
             if requeridos.issubset(presentes):
-                mensaje = "✅ ¡Estás listo para trabajar compañero!"
+                mensaje = "Yuju ¡Estás listo para trabajar compañero!"
                 st.success(mensaje)
             else:
                 faltantes = requeridos - presentes
-                mensaje = f"❌ Lo siento compañero, no estás listo para trabajar. Te falta: {', '.join(faltantes)}."
+                mensaje = f"NOO Lo siento compañero, no estás listo para trabajar. Te falta: {', '.join(faltantes)}."
                 st.error(mensaje)
 
             # 🎧 Audio del mensaje final
