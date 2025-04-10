@@ -1,28 +1,15 @@
 import streamlit as st
 from PIL import Image
-import tensorflow as tf
+import cv2
 import numpy as np
 import os
-import requests
-from io import BytesIO
+from ultralytics import YOLO
+import tempfile
 from gtts import gTTS
 import base64
+from io import BytesIO
 
-# 🌟 CONFIGURACIÓN DE LA APP
-st.set_page_config(page_title="Detector de EPP con Glamour", page_icon="🦺", layout="centered")
-st.title("🛠️✨ Detector de Equipos de Protección Personal")
-st.markdown("""
-### 📸 Sube una imagen, toma una foto o pega una URL
-
-Vamos a verificar si estás **listo para entrar a la obra**.  
-Necesitas tener:
-- 🥾 **Botas**
-- 👷 **Casco**
-- 🦺 **Chaleco**
-- 🙋 **Presencia humana**
-""")
-
-# 🎧 Funciones de voz con estilo
+# 🎧 Funciones de voz
 
 def generar_audio(texto):
     tts = gTTS(text=texto, lang='es')
@@ -37,96 +24,107 @@ def reproducir_audio(mp3_fp):
     audio_html = f'<audio autoplay="true"><source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3"></audio>'
     st.markdown(audio_html, unsafe_allow_html=True)
 
-# 🚀 Cargar modelo TFLite
-@st.cache_resource
-def load_model():
-    interpreter = tf.lite.Interpreter(model_path="mimodelitolindo.tflite")
-    interpreter.allocate_tensors()
-    return interpreter
+# 🧠 Cargar modelos
+modelo_personas = YOLO("yolov8n.pt")     # Detección de personas
+modelo_ppe = YOLO("best.pt")             # Detección de PPE
 
-interpreter = load_model()
-input_details = interpreter.get_input_details()
-output_details = interpreter.get_output_details()
-input_shape = input_details[0]['shape'][1:3]  # (alto, ancho)
+# 🌟 Configuración de la página
+st.set_page_config(page_title="Detector PPE - Angelly & Nathalia 💖", layout="wide")
 
-# 🎯 Clases esperadas
-model_classes = ['boots', 'gloves', 'helmet', 'human', 'vest']
-required_classes = {'boots', 'helmet', 'vest', 'human'}
+# Encabezado
+st.title("💼 Sistema Inteligente de uso de Equipos de Protección Personal 🦺")
 
-# 💬 Nivel de confianza
-st.markdown("**Selecciona el nivel mínimo de confianza para aceptar una clase detectada:**")
-confianza = st.slider("Confianza (%)", min_value=0, max_value=100, value=50, step=1) / 100.0
+st.markdown("""
+Bienvenido al **Sistema Inteligente de uso de Equipos de Protección Personal (PPE)** 💡 desarrollado con cariño por **Angelly y Nathalia** 💖.  
+Esta herramienta usa visión por computadora para verificar si estás listo para trabajar de forma segura.
 
-# 📤 Carga de imagen
-option = st.radio("Selecciona cómo subir la imagen:", ["📂 Archivo", "🌐 URL", "📸 Cámara"])
-image = None
+---
+""")
 
-if option == "📂 Archivo":
-    uploaded_file = st.file_uploader("Sube tu imagen", type=["jpg", "jpeg", "png"])
-    if uploaded_file:
-        image = Image.open(uploaded_file).convert("RGB")
+# Instrucciones
+st.subheader("📌 ¿Cómo usar la app?")
+st.markdown("""
+1. Carga una imagen o toma una foto 📸.  
+2. Haz clic en **Enviar Foto**.  
+3. La IA detectará personas y evaluará el uso correcto de **casco**, **chaleco** y **botas**.
+""")
 
-elif option == "🌐 URL":
-    url = st.text_input("Pega la URL de la imagen")
-    if url:
-        try:
-            image = Image.open(requests.get(url, stream=True).raw).convert("RGB")
-        except:
-            st.error("No se pudo cargar la imagen desde la URL")
+# Tabs para imagen o cámara
+tab1, tab2 = st.tabs(["📁 Subir Imagen", "📷 Tomar Foto"])
+imagen_original = None
+procesar = False
 
-elif option == "📸 Cámara":
-    camera_input = st.camera_input("Toma una foto")
-    if camera_input:
-        image = Image.open(camera_input).convert("RGB")
+with tab1:
+    foto = st.file_uploader("Sube una imagen", type=["jpg", "png", "jpeg"])
+    if st.button("📤 Enviar Foto", key="upload"):
+        if foto:
+            imagen_original = Image.open(foto)
+            procesar = True
+        else:
+            st.warning("Por favor, sube una imagen primero.")
 
-# 🔍 Procesamiento y predicción
-if image:
-    st.image(image, caption="📷 Imagen cargada", use_column_width=True)
+with tab2:
+    captura = st.camera_input("Toma una foto")
+    if st.button("📤 Enviar Foto", key="camera"):
+        if captura:
+            imagen_original = Image.open(captura)
+            procesar = True
+        else:
+            st.warning("Por favor, toma una foto antes de continuar.")
 
-    # Preprocesamiento
-    resized_img = image.resize((input_shape[1], input_shape[0]))
-    img_array = tf.keras.utils.img_to_array(resized_img)
-    img_array = tf.expand_dims(img_array, 0)  # Crear batch de 1
+# Procesamiento
+if procesar and imagen_original:
+    st.subheader("🔍 Imagen cargada")
+    st.image(imagen_original, use_container_width=True)
 
-    # Ejecutar inferencia
-    interpreter.set_tensor(input_details[0]['index'], img_array)
-    interpreter.invoke()
-    output_data = interpreter.get_tensor(output_details[0]['index'])
+    # Convertir imagen a formato OpenCV
+    img_cv = np.array(imagen_original)
+    img_cv = cv2.cvtColor(img_cv, cv2.COLOR_RGB2BGR)
 
-    # Procesar la salida del modelo de detección YOLOv8
-    detections = output_data[0].transpose()  # shape: (8400, 9)
-    detected_labels = set()
+    # Detección de personas
+    resultados_personas = modelo_personas(img_cv)[0]
+    personas_detectadas = [r for r in resultados_personas.boxes.data.cpu().numpy() if int(r[5]) == 0]
 
-    for det in detections:
-        x, y, w, h = det[:4]
-        obj_conf = det[4]
-        class_probs = det[5:]
+    st.subheader(f"👥 Personas detectadas: {len(personas_detectadas)}")
 
-        if obj_conf > confianza:
-            class_id = int(np.argmax(class_probs))
-            class_conf = class_probs[class_id]
-            if class_conf > confianza and class_id < len(model_classes):
-                detected_labels.add(model_classes[class_id])
+    # Evaluar cada persona
+    for i, persona in enumerate(personas_detectadas, start=1):
+        x1, y1, x2, y2, conf, clase = map(int, persona[:6])
+        persona_img = img_cv[y1:y2, x1:x2]
 
-    faltantes = required_classes - detected_labels
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
+            cv2.imwrite(temp_file.name, persona_img)
+            resultados_ppe = modelo_ppe(temp_file.name)[0]
+            etiquetas_detectadas = [modelo_ppe.names[int(d.cls)] for d in resultados_ppe.boxes]
 
-    st.subheader("📊 Resultado de la Predicción")
-    if not faltantes:
-        st.success("✅ ¡Estás listo para trabajar! Todos los elementos de seguridad están presentes.")
-        audio_text = "¡Felicidades compañero! Estás listo para trabajar."
-    else:
-        st.error(f"⚠️ Lo siento compañero, no estás preparado para trabajar. Te falta: {', '.join(faltantes)}")
-        audio_text = f"Lo siento compañero. No estás listo para trabajar. Te falta: {', '.join(faltantes)}."
+            for box in resultados_ppe.boxes:
+                x1o, y1o, x2o, y2o = map(int, box.xyxy[0])
+                label = modelo_ppe.names[int(box.cls[0])]
+                conf = float(box.conf[0])
+                cv2.rectangle(persona_img, (x1o, y1o), (x2o, y2o), (0, 255, 0), 2)
+                cv2.putText(persona_img, f"{label} {conf:.2f}", (x1o, y1o - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
-    # Mostrar etiquetas detectadas
-    st.markdown("""
-    ---
-    **Detectado:**
-    - """ + "\n    - ".join(sorted(detected_labels) if detected_labels else ["Nada detectado"]))
+            st.markdown(f"### 👤 Persona {i}")
+            st.image(persona_img, caption="Objetos detectados", channels="BGR", width=300)
+            st.markdown("**🧾 Objetos detectados:** " + ", ".join(etiquetas_detectadas))
 
-    # Audio
-    mp3 = generar_audio(audio_text)
-    reproducir_audio(mp3)
+            requeridos = {"casco", "chaleco", "botas"}
+            presentes = set(etiquetas_detectadas)
 
+            if requeridos.issubset(presentes):
+                mensaje = "✅ ¡Estás listo para trabajar compañero!"
+                st.success("✅ ¡Estás listo para trabajar compañero!")
+            else:
+                faltantes = requeridos - presentes
+                mensaje = f"❌ Lo siento compañero, no estás listo para trabajar. Te falta: {', '.join(faltantes)}."
+                st.error(mensaje)
+
+            # 🎧 Reproducir audio
+            audio_fp = generar_audio(mensaje)
+            reproducir_audio(audio_fp)
+
+    st.markdown("---")
+    st.markdown("**Hecho con 💖 por Angelly y Nathalia - UNAB 2025**")
 else:
-    st.info("✨ Sube una imagen, pega una URL o toma una foto para comenzar.")
+    st.info("✨ Sube una imagen o toma una foto para comenzar.")
