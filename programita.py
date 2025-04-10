@@ -146,11 +146,13 @@ if procesar and imagen_original:
             if requeridos.issubset(presentes):
                 mensaje = "✅ ¡Estás listo para trabajar compañero!"
                 st.success(mensaje)
+                st.image("ok.png", use_container_width=True)
                 st.balloons()  # 🎈 Confeti si cumple
             else:
                 faltantes = requeridos - presentes
                 mensaje = f"❌ Lo siento compañero, no estás listo para trabajar. Te falta: {', '.join(faltantes)}."
                 st.error(mensaje)
+                st.image("No.png", use_container_width=True)
                 st.snow()
 
 
