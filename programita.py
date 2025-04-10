@@ -27,7 +27,7 @@ def reproducir_audio(mp3_fp):
 
 # 🧠 Cargar modelos
 modelo_personas = YOLO("yolov8n.pt")     # Detección de personas
-modelo_ppe = YOLO("best.pt")             # Detección de PPE
+modelo_ppe = YOLO("modelitolindo.pt")             # Detección de PPE
 
 # 🌟 Configuración de la página
 st.set_page_config(page_title="Evaluador PPE Inteligente", layout="wide")
@@ -48,15 +48,6 @@ st.markdown("""
 </center>
 ---
 """, unsafe_allow_html=True)
-
-# Traducción para mostrar nombres de objetos en español
-traduccion_clases = {
-    "helmet": "casco",
-    "vest": "chaleco",
-    "boots": "botas",
-    "gloves": "guantes",
-    "human": "persona"
-}
 
 # 🔍 Instrucciones con ejemplo visual
 with st.expander("📖 ¿Cómo se usa esta herramienta?"):
@@ -133,8 +124,6 @@ if procesar and imagen_original:
             resultados_ppe = modelo_ppe(temp_file.name)[0]
             etiquetas_detectadas = [modelo_ppe.names[int(d.cls)] for d in resultados_ppe.boxes]
 
-            etiquetas_detectadas_es = [traduccion_clases.get(etiqueta, etiqueta) for etiqueta in etiquetas_detectadas]
-
             for box in resultados_ppe.boxes:
                 x1o, y1o, x2o, y2o = map(int, box.xyxy[0])
                 label = modelo_ppe.names[int(box.cls[0])]
@@ -149,10 +138,10 @@ if procesar and imagen_original:
                 f'<center><img src="data:image/png;base64,{persona_img_encoded}" style="width: 300px; border-radius: 12px; box-shadow: 0px 4px 12px rgba(0,0,0,0.2);"/></center>',
                 unsafe_allow_html=True
             )
-            st.markdown("**🎒 Elementos detectados:** " + ", ".join(etiquetas_detectadas_es))
+            st.markdown("**🎒 Elementos detectados:** " + ", ".join(etiquetas_detectadas))
 
             requeridos = {"casco", "chaleco", "botas"}
-            presentes = set(etiquetas_detectadas_es)
+            presentes = set(etiquetas_detectadas)
 
             if requeridos.issubset(presentes):
                 mensaje = "✅ ¡Estás listo para trabajar compañero!"
@@ -165,6 +154,7 @@ if procesar and imagen_original:
                 st.error(mensaje)
                 st.image("No.png", use_container_width=True)
                 st.snow()
+
 
             # 🎧 Audio del mensaje final
             audio_fp = generar_audio(mensaje)
