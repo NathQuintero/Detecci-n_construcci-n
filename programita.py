@@ -32,8 +32,15 @@ modelo_ppe = YOLO("best.pt")             # Detección de PPE
 # 🌟 Configuración de la página
 st.set_page_config(page_title="Evaluador PPE Inteligente", layout="wide")
 
+# ✨ Firma superior
+st.markdown("""
+<center>
+    <p style='font-size:18px;'><strong>Hecho con dedicación por Angelly y Nathalia</strong><br>Todos los derechos reservados ©️</p>
+</center>
+""", unsafe_allow_html=True)
+
 # 🖼️ Banner
-st.image("banner.png", use_column_width=True)
+st.image("banner.png", use_container_width=True)
 st.markdown("""
 <center>
     <h2>🦺 Bienvenido compañero a tu trabajo</h2>
@@ -51,7 +58,7 @@ with st.expander("📖 ¿Cómo se usa esta herramienta?"):
     
     Luego, haz clic en **'Analizar Imagen'** para verificar si cumples con los requerimientos de seguridad 🏗️🛡️
     """)
-    st.image("ejemplo.png", caption="Ejemplo de foto válida", use_column_width=True)
+    st.image("ejemplo.png", caption="Ejemplo de foto válida", use_container_width=True)
     st.info("Recuerda mostrar todo tu cuerpo y tus elementos de protección en la imagen")
 
 # 🔄 Entrada de imagen con selector
@@ -96,7 +103,7 @@ elif opcion == "Desde una URL":
 if procesar and imagen_original:
     st.markdown("---")
     st.markdown("<center><h3>🔍 Imagen cargada</h3></center>", unsafe_allow_html=True)
-    st.image(imagen_original, use_column_width=True)
+    st.image(imagen_original, use_container_width=True)
 
     # Convertir imagen a OpenCV
     img_cv = np.array(imagen_original)
@@ -126,7 +133,7 @@ if procesar and imagen_original:
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
             st.markdown(f"<center><h4>👤 Persona {i}</h4></center>", unsafe_allow_html=True)
-            st.image(persona_img, caption="🔎 Objetos detectados", channels="BGR", width=400)
+            st.image(persona_img, caption="🔎 Objetos detectados", channels="BGR", use_container_width=True)
             st.markdown("**🎒 Elementos detectados:** " + ", ".join(etiquetas_detectadas))
 
             requeridos = {"casco", "chaleco", "botas"}
@@ -145,6 +152,5 @@ if procesar and imagen_original:
             reproducir_audio(audio_fp)
 
     st.markdown("---")
-    st.markdown("<center>🛠️ Hecho con 💖 por <strong>Nathalia</strong> & <strong>Angelly</strong> — UNAB 2025</center>", unsafe_allow_html=True)
 else:
     st.info("🧠 Esperando imagen... ¡Selecciona una forma de carga y haz clic en 'Analizar Imagen'!")
