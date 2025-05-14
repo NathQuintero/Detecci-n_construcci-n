@@ -11,7 +11,6 @@ from gtts import gTTS
 import base64
 
 # 🎧 Funciones de voz
-
 def generar_audio(texto):
     tts = gTTS(text=texto, lang='es')
     mp3_fp = BytesIO()
@@ -19,15 +18,15 @@ def generar_audio(texto):
     mp3_fp.seek(0)
     return mp3_fp
 
-def reproducir_audio(mp3_fp):
+def mostrar_audio(mp3_fp, label="Reproducir audio"):
     audio_bytes = mp3_fp.read()
     audio_base64 = base64.b64encode(audio_bytes).decode()
-    audio_html = f'<audio autoplay="true"><source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3"></audio>'
-    st.markdown(audio_html, unsafe_allow_html=True)
+    audio_html = f'<audio controls><source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3"></audio>'
+    return audio_html
 
 # 🧠 Cargar modelos
-modelo_personas = YOLO("yolov8n.pt")     
-modelo_ppe = YOLO("best.pt")             
+modelo_personas = YOLO("yolov8n.pt")
+modelo_ppe = YOLO("best.pt")
 
 # 🌟 Configuración de la página
 st.set_page_config(page_title="Evaluador PPE Inteligente", layout="wide")
@@ -55,11 +54,24 @@ with st.expander("📖 ¿Cómo se usa esta herramienta?"):
     - 📁 Puedes **subir una imagen desde tu dispositivo**
     - 🌐 O puedes **pegar la URL de una imagen** desde internet
     - 📷 También puedes **tomarte una foto con la cámara**
-    
-    Luego, haz clic en **'Analizar Imagen'** para verificar si cumples con los requerimientos de seguridad 🏗️🛡️
+    ```
+    Luego, selecciona los elementos de PPE a evaluar y haz clic en **'Analizar Imagen'** para verificar si cumples con los requerimientos de seguridad 🏗️🛡️
+    ```
+    Los resultados incluirán un audio para cada persona que podrás reproducir manualmente.
     """)
     st.image("ejemplo.png", caption="Ejemplo de foto válida", use_container_width=True)
     st.info("Recuerda mostrar todo tu cuerpo y tus elementos de protección en la imagen")
+
+# 🔄 Selección de clases PPE
+st.subheader("🛡️ Selecciona los elementos de PPE a evaluar")
+clases_disponibles = ["casco", "chaleco", "botas", "guantes"]  # Ajusta según las clases de tu modelo
+clases_seleccionadas = st.multiselect(
+    "Elige uno o más elementos requeridos",
+    options=clases_disponibles,
+    default=["casco", "chaleco", "botas"]
+)
+if not clases_seleccionadas:
+    st.warning("⚠️ Por favor, selecciona al menos un elemento de PPE para evaluar.")
 
 # 🔄 Entrada de imagen con selector
 st.subheader("📸 Selecciona cómo quieres subir la imagen")
@@ -100,7 +112,7 @@ elif opcion == "Desde una URL":
             st.warning("⚠️ Ingresa una URL válida.")
 
 # 🔎 Análisis de la imagen
-if procesar and imagen_original:
+if procesar and imagen_original and clases_seleccionadas:
     st.markdown("---")
     st.markdown("<center><h3>🔍 Imagen cargada</h3></center>", unsafe_allow_html=True)
     st.image(imagen_original, use_container_width=True)
@@ -138,28 +150,35 @@ if procesar and imagen_original:
                 f'<center><img src="data:image/png;base64,{persona_img_encoded}" style="width: 300px; border-radius: 12px; box-shadow: 0px 4px 12px rgba(0,0,0,0.2);"/></center>',
                 unsafe_allow_html=True
             )
-            st.markdown("**🎒 Elementos detectados:** " + ", ".join(etiquetas_detectadas))
+            st.markdown("**🎒 Elementos detectados:** " + ", ".join(etiquetas_detectadas) if etiquetas_detectadas else "Ninguno")
 
-            requeridos = {"casco", "chaleco", "botas"}
+            requeridos = set(clases_seleccionadas)
             presentes = set(etiquetas_detectadas)
 
             if requeridos.issubset(presentes):
-                mensaje = "✅ ¡Estás listo para trabajar compañero!"
+                mensaje = f"Persona {i}: ¡Estás listo para trabajar compañero!"
                 st.success(mensaje)
                 st.image("ok.png", use_container_width=True)
-                st.balloons()  # 🎈 Confeti si cumple
+                st.balloons()
             else:
                 faltantes = requeridos - presentes
-                mensaje = f"❌ Lo siento compañero, no estás listo para trabajar. Te falta: {', '.join(faltantes)}."
+                mensaje = f"Persona {i}: Lo siento compañero, no estás listo para trabajar. Te falta: {', '. huis(faltantes)}."
                 st.error(mensaje)
                 st.image("No.png", use_container_width=True)
                 st.snow()
 
-
-            # 🎧 Audio del mensaje final
+            # Generar audio individual para esta persona
             audio_fp = generar_audio(mensaje)
-            reproducir_audio(audio_fp)
+            st.markdown(f"**🎧 Audio para Persona {i}:**")
+            st.markdown(mostrar_audio(audio_fp, f"Reproducir audio Persona {i}"), unsafe_allow_html=True)
+            audio_fp.seek(0)
+            st.download_button(
+                label=f"📥 Descargar audio Persona {i}",
+                data=audio_fp,
+                file_name=f"resultado_persona_{i}.mp3",
+                mime="audio/mp3"
+            )
 
     st.markdown("---")
 else:
-    st.info("🧠 Esperando imagen... ¡Selecciona una forma de carga y haz clic en 'Analizar Imagen'!")
+    st.info("🧠 Esperando imagen o selección de elementos... ¡Selecciona los elementos de PPE, una forma de carga y haz clic en 'Analizar Imagen'!")
