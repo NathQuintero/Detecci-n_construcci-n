@@ -36,6 +36,19 @@ modelo_ppe = YOLO("best.pt")
 # 🌟 Configuración de la página
 st.set_page_config(page_title="Evaluador PPE Inteligente", layout="wide")
 
+# 🔊 Audio automático al cargar
+st.markdown("<h5>🎧 Audio automático de bienvenida</h5>", unsafe_allow_html=True)
+audio_bienvenida = generar_audio("Hola compañero, voy a escanearte.")
+audio_bytes = audio_bienvenida.read()
+audio_base64 = base64.b64encode(audio_bytes).decode()
+audio_html = f'''
+<audio autoplay>
+    <source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3">
+    Tu navegador no soporta audio.
+</audio>
+'''
+st.markdown(audio_html, unsafe_allow_html=True)
+
 # ✨ Firma superior
 st.markdown("""
 <center>
@@ -53,14 +66,12 @@ st.markdown("""
 ---
 """, unsafe_allow_html=True)
 
-# 🔍 Instrucciones con ejemplo visual
+# 🔍 Instrucciones
 with st.expander("📖 ¿Cómo se usa esta herramienta?"):
     st.markdown("""
     - 📁 Puedes **subir una imagen desde tu dispositivo**
-    - 🌐 O puedes **pegar la URL de una imagen** desde internet
+    - 🌐 O puedes **pegar la URL de una imagen**
     - 📷 También puedes **tomarte una foto con la cámara**
-    
-    Luego, haz clic en **'Analizar Imagen'** para verificar si cumples con los requerimientos de seguridad 🏗️🛡️
     """)
     st.image("ejemplo.png", caption="Ejemplo de foto válida", use_container_width=True)
     st.info("Recuerda mostrar todo tu cuerpo y tus elementos de protección en la imagen")
@@ -69,11 +80,11 @@ with st.expander("📖 ¿Cómo se usa esta herramienta?"):
 st.subheader("✅ ¿Qué elementos de protección vas a evaluar?")
 opciones_evaluar = st.multiselect(
     "Selecciona uno o varios elementos:",
-    ["casco", "chaleco", "botas"],
+    ["casco", "chaleco", "botas", "guantes"],
     default=["casco", "chaleco", "botas"]
 )
 
-# 🔄 Entrada de imagen con selector
+# 🔄 Entrada de imagen
 st.subheader("📸 Selecciona cómo quieres subir la imagen")
 opcion = st.selectbox("¿Cómo deseas ingresar la imagen?", ("Subir desde archivo", "Desde la cámara", "Desde una URL"))
 
@@ -111,17 +122,15 @@ elif opcion == "Desde una URL":
         else:
             st.warning("⚠️ Ingresa una URL válida.")
 
-# 🔎 Análisis de la imagen
+# 🔎 Análisis
 if procesar and imagen_original:
     st.markdown("---")
     st.markdown("<center><h3>🔍 Imagen cargada</h3></center>", unsafe_allow_html=True)
     st.image(imagen_original, use_container_width=True)
 
-    # Convertir imagen a OpenCV
     img_cv = np.array(imagen_original)
     img_cv = cv2.cvtColor(img_cv, cv2.COLOR_RGB2BGR)
 
-    # Detección de personas
     resultados_personas = modelo_personas(img_cv)[0]
     personas_detectadas = [r for r in resultados_personas.boxes.data.cpu().numpy() if int(r[5]) == 0]
 
@@ -156,18 +165,18 @@ if procesar and imagen_original:
             presentes = set(etiquetas_detectadas)
 
             if requeridos.issubset(presentes):
-                mensaje = "✅ ¡Estás listo para trabajar compañero!"
+                mensaje = "✅ ¡Estás listo para trabajar compañero!, Ya puedes ingresar"
                 st.success(mensaje)
                 st.image("ok.png", use_container_width=True)
                 st.balloons()
             else:
                 faltantes = requeridos - presentes
-                mensaje = f"❌ Lo siento compañero, no estás listo para trabajar. Te falta: {', '.join(faltantes)}."
+                mensaje = f"❌ Lo siento compañero, no estás listo para trabajar. Si quieres ingresar debes ponerte: {', '.join(faltantes)}."
                 st.error(mensaje)
                 st.image("No.png", use_container_width=True)
                 st.snow()
 
-            # 🎧 Audio por persona (no autoplay)
+            # 🎧 Audio por persona (manual)
             audio_fp = generar_audio(mensaje)
             mostrar_audio(audio_fp)
 
