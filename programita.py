@@ -143,12 +143,15 @@ if procesar and imagen_original:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
             cv2.imwrite(temp_file.name, persona_img)
             resultados_ppe = modelo_ppe(temp_file.name)[0]
-            etiquetas_detectadas = [modelo_ppe.names[int(d.cls)] for d in resultados_ppe.boxes]
 
+            etiquetas_detectadas = []
             for box in resultados_ppe.boxes:
                 x1o, y1o, x2o, y2o = map(int, box.xyxy[0])
                 label = modelo_ppe.names[int(box.cls[0])]
+                if label.lower() == "guantes":
+                    continue  # ⚠️ ignorar por completo guantes
                 conf = float(box.conf[0])
+                etiquetas_detectadas.append(label)
                 cv2.rectangle(persona_img, (x1o, y1o), (x2o, y2o), (0, 255, 0), 2)
                 cv2.putText(persona_img, f"{label} {conf:.2f}", (x1o, y1o - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
@@ -176,7 +179,7 @@ if procesar and imagen_original:
                 st.image("No.png", use_container_width=True)
                 st.snow()
 
-            # 🎧 Audio por persona (manual)
+            # 🎧 Audio por persona
             audio_fp = generar_audio(mensaje)
             mostrar_audio(audio_fp)
 
