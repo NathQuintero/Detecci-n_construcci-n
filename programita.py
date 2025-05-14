@@ -69,7 +69,7 @@ with st.expander("📖 ¿Cómo se usa esta herramienta?"):
 st.subheader("✅ ¿Qué elementos de protección vas a evaluar?")
 opciones_evaluar = st.multiselect(
     "Selecciona uno o varios elementos:",
-    ["casco", "chaleco", "botas", "guantes"],
+    ["casco", "chaleco", "botas"],
     default=["casco", "chaleco", "botas"]
 )
 
