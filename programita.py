@@ -38,7 +38,7 @@ st.set_page_config(page_title="Evaluador PPE Inteligente", layout="wide")
 
 # 🔊 Audio automático al cargar
 st.markdown("<h5>🎧 Audio automático de bienvenida</h5>", unsafe_allow_html=True)
-audio_bienvenida = generar_audio("Hola compañero soy Nately, voy a escanearte, para asegurarme que tengas el equipo de protección necesario para ingresar al area de trabajo.")
+audio_bienvenida = generar_audio("Hola compañero, soy Nately. voy a escanearte para asegurarme que tengas el equipo de protección necesario para ingresar al area de trabajo.")
 audio_bytes = audio_bienvenida.read()
 audio_base64 = base64.b64encode(audio_bytes).decode()
 audio_html = f'''
